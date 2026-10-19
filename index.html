@@ -65,7 +65,7 @@
           AI-Audited Secure Password Manager
         </h1>
         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Generate user-focused secure passwords for your accounts, store them locally, or export as CSV for browser managers.
+          Generate user-focused secure passwords for your accounts, auto-store locally, or export as CSV for browser managers.
         </p>
       </div>
       <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 text-blue-700 dark:text-blue-300 text-xs font-medium self-start sm:self-center">
@@ -116,7 +116,7 @@
             <div class="flex flex-col sm:flex-row gap-2 pt-2">
               <button id="generateBtn" class="flex-1 py-2.5 px-3 rounded-xl font-semibold text-xs text-white bg-blue-600 hover:bg-blue-500 transition-all flex items-center justify-center gap-1.5 shadow-md shadow-blue-600/20">
                 <i class="fa-solid fa-rotate"></i>
-                <span>Generate Password</span>
+                <span>Generate & Save</span>
               </button>
               
               <button id="saveCsvBtn" class="flex-1 py-2.5 px-3 rounded-xl font-semibold text-xs text-white bg-emerald-600 hover:bg-emerald-500 transition-all flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/20">
@@ -129,7 +129,7 @@
             <div class="p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/40 rounded-xl text-[11px] text-blue-800 dark:text-blue-300 leading-relaxed flex items-start gap-2">
               <i class="fa-solid fa-circle-info text-blue-500 mt-0.5"></i>
               <div>
-                <strong>CSV Export Format:</strong> Clicking <em>"Export as CSV"</em> downloads a standard credential file compatible with browser password manager import tools (Chrome, Firefox, Edge).
+                <strong>Auto-Save Enabled:</strong> Clicking <em>"Generate & Save"</em> instantly creates a secure password, logs it to your local vault, and prepares it for CSV browser import.
               </div>
             </div>
 
@@ -207,8 +207,8 @@
     const exportAllCsvBtn = document.getElementById('exportAllCsvBtn');
     const vaultList = document.getElementById('vaultList');
 
-    // Generate Cryptographically Secure Password
-    function generate() {
+    // Generate Cryptographically Secure Password & Auto-Save
+    function generateAndSave() {
       const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=';
       const array = new Uint32Array(24);
       window.crypto.getRandomValues(array);
@@ -217,6 +217,10 @@
         pass += chars[array[i] % chars.length];
       }
       testPassword.value = pass;
+
+      // Automatically store in vault on generation
+      const service = serviceInput.value.trim() || 'Personal Account';
+      saveToVault(service, pass);
     }
 
     // Local Storage Vault Handling
@@ -226,6 +230,9 @@
 
     function saveToVault(service, password) {
       const vault = getVault();
+      // Avoid exact duplicates back-to-back
+      if (vault.length > 0 && vault[0].password === password) return;
+
       vault.unshift({
         id: Date.now(),
         service: service || 'Personal Account',
@@ -236,10 +243,17 @@
       renderVault();
     }
 
+    function deleteVaultItem(id) {
+      let vault = getVault();
+      vault = vault.filter(item => item.id !== id);
+      localStorage.setItem('tcss490_user_vault', JSON.stringify(vault));
+      renderVault();
+    }
+
     function renderVault() {
       const vault = getVault();
       if (vault.length === 0) {
-        vaultList.innerHTML = `<p class="text-xs text-gray-400 italic py-2">No saved accounts yet. Enter an account name and export a password above!</p>`;
+        vaultList.innerHTML = `<p class="text-xs text-gray-400 italic py-2">No saved accounts yet. Click generate above!</p>`;
         return;
       }
 
@@ -249,11 +263,18 @@
             <span class="font-bold text-gray-800 dark:text-gray-200 block">${escapeHtml(item.service)}</span>
             <span class="font-mono text-[11px] text-gray-500">${escapeHtml(item.password)}</span>
           </div>
-          <button onclick="downloadSingleCsv('${escapeJs(item.service)}', '${escapeJs(item.password)}')" 
-                  class="px-2 py-1 rounded bg-blue-100 dark:bg-blue-950/60 hover:bg-blue-600 hover:text-white text-blue-700 dark:text-blue-300 text-[11px] font-medium transition-colors flex items-center gap-1"
-                  title="Download CSV">
-            <i class="fa-solid fa-file-arrow-down"></i>CSV
-          </button>
+          <div class="flex items-center gap-1.5">
+            <button onclick="downloadSingleCsv('${escapeJs(item.service)}', '${escapeJs(item.password)}')" 
+                    class="px-2 py-1 rounded bg-blue-100 dark:bg-blue-950/60 hover:bg-blue-600 hover:text-white text-blue-700 dark:text-blue-300 text-[11px] font-medium transition-colors"
+                    title="Download CSV">
+              <i class="fa-solid fa-file-arrow-down"></i>
+            </button>
+            <button onclick="deleteVaultItem(${item.id})" 
+                    class="px-2 py-1 rounded bg-red-100 dark:bg-red-950/60 hover:bg-red-600 hover:text-white text-red-600 dark:text-red-400 text-[11px] transition-colors"
+                    title="Delete Entry">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </div>
         </div>
       `).join('');
     }
@@ -284,7 +305,7 @@
     }
 
     // Event Listeners
-    generateBtn.addEventListener('click', generate);
+    generateBtn.addEventListener('click', generateAndSave);
 
     copyBtn.addEventListener('click', () => {
       navigator.clipboard.writeText(testPassword.value);
@@ -293,10 +314,12 @@
     });
 
     saveCsvBtn.addEventListener('click', () => {
-      const service = serviceInput.value.trim() || 'Personal Account';
-      const password = testPassword.value;
-      saveToVault(service, password);
-      downloadCsv([{ service, password }]);
+      const vault = getVault();
+      if (vault.length === 0) {
+        alert("No passwords in the vault to export!");
+        return;
+      }
+      downloadCsv(vault);
       
       saveCsvBtn.innerHTML = '<i class="fa-solid fa-check"></i><span>CSV Exported!</span>';
       setTimeout(() => {
@@ -307,7 +330,7 @@
     exportAllCsvBtn.addEventListener('click', () => {
       const vault = getVault();
       if (vault.length === 0) {
-        alert("No saved passwords to export! Generate and save some passwords first.");
+        alert("No saved passwords to export! Generate some passwords first.");
         return;
       }
       downloadCsv(vault);
@@ -320,9 +343,8 @@
       return str.replace(/'/g, "\\'").replace(/"/g, '\\"');
     }
 
-    // Initial Load
-    generate();
-    renderVault();
+    // Initial Load - generate first password on page load
+    generateAndSave();
   </script>
 </body>
 </html>
