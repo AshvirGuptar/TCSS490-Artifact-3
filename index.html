@@ -299,7 +299,7 @@
       downloadCsv([{ service, password }]);
       
       saveCsvBtn.innerHTML = '<i class="fa-solid fa-check"></i><span>CSV Exported!</span>';
-      setTimeout => {
+      setTimeout(() => {
         saveCsvBtn.innerHTML = '<i class="fa-solid fa-file-arrow-down"></i><span>Export as CSV</span>';
       }, 1500);
     });
