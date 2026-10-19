@@ -15,8 +15,3 @@ This document records the prompt engineering and development workflow utilized t
 
 ---
 
-## Instructions for Template Usage
-
-1. **Adding Entries:** Append new rows to the table above in chronological order for subsequent bug fixes or feature updates.
-2. **Formatting:** Summarize technical goals clearly and concisely.
-3. **Repository Integration:** Place this file at the root of the Artifact 03 repository (`TCSS490-Artifact-3`).
