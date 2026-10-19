@@ -65,7 +65,7 @@
           AI-Audited Secure Password Manager
         </h1>
         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Generate user-focused secure passwords for your accounts, auto-store locally, or export as CSV for browser managers.
+          Generate user-focused secure passwords for your accounts, store them locally, or export as CSV for browser managers.
         </p>
       </div>
       <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 text-blue-700 dark:text-blue-300 text-xs font-medium self-start sm:self-center">
@@ -129,7 +129,7 @@
             <div class="p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/40 rounded-xl text-[11px] text-blue-800 dark:text-blue-300 leading-relaxed flex items-start gap-2">
               <i class="fa-solid fa-circle-info text-blue-500 mt-0.5"></i>
               <div>
-                <strong>Auto-Save Enabled:</strong> Clicking <em>"Generate & Save"</em> instantly creates a secure password, logs it to your local vault, and prepares it for CSV browser import.
+                <strong>Local Storage Notice:</strong> Clicking <em>"Generate & Save"</em> generates a secure password, logs it to your browser's private local storage, and prepares it for CSV export.
               </div>
             </div>
 
@@ -207,8 +207,8 @@
     const exportAllCsvBtn = document.getElementById('exportAllCsvBtn');
     const vaultList = document.getElementById('vaultList');
 
-    // Generate Cryptographically Secure Password & Auto-Save
-    function generateAndSave() {
+    // Generate Cryptographically Secure Password (Pure Function)
+    function generatePasswordOnly() {
       const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=';
       const array = new Uint32Array(24);
       window.crypto.getRandomValues(array);
@@ -216,9 +216,14 @@
       for (let i = 0; i < 24; i++) {
         pass += chars[array[i] % chars.length];
       }
+      return pass;
+    }
+
+    // Generate Password + Explicit User Save
+    function generateAndSave() {
+      const pass = generatePasswordOnly();
       testPassword.value = pass;
 
-      // Automatically store in vault on generation
       const service = serviceInput.value.trim() || 'Personal Account';
       saveToVault(service, pass);
     }
@@ -230,7 +235,6 @@
 
     function saveToVault(service, password) {
       const vault = getVault();
-      // Avoid exact duplicates back-to-back
       if (vault.length > 0 && vault[0].password === password) return;
 
       vault.unshift({
@@ -253,7 +257,7 @@
     function renderVault() {
       const vault = getVault();
       if (vault.length === 0) {
-        vaultList.innerHTML = `<p class="text-xs text-gray-400 italic py-2">No saved accounts yet. Click generate above!</p>`;
+        vaultList.innerHTML = `<p class="text-xs text-gray-400 italic py-2">No saved accounts yet. Enter an account name and click generate above!</p>`;
         return;
       }
 
@@ -316,7 +320,7 @@
     saveCsvBtn.addEventListener('click', () => {
       const vault = getVault();
       if (vault.length === 0) {
-        alert("No passwords in the vault to export!");
+        alert("No saved passwords to export! Generate and save some passwords first.");
         return;
       }
       downloadCsv(vault);
@@ -330,7 +334,7 @@
     exportAllCsvBtn.addEventListener('click', () => {
       const vault = getVault();
       if (vault.length === 0) {
-        alert("No saved passwords to export! Generate some passwords first.");
+        alert("No saved passwords to export! Generate and save some passwords first.");
         return;
       }
       downloadCsv(vault);
@@ -343,8 +347,9 @@
       return str.replace(/'/g, "\\'").replace(/"/g, '\\"');
     }
 
-    // Initial Load - generate first password on page load
-    generateAndSave();
+    // Initial Load: Display a password WITHOUT saving it to local vault automatically
+    testPassword.value = generatePasswordOnly();
+    renderVault();
   </script>
 </body>
 </html>
