@@ -1,0 +1,42 @@
+name: Continuous AI Code & Security Audit
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  claude-code-audit:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Execute Headless Claude Code Security Review
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          mkdir -p reports
+          
+          # Run headless Claude Code agent to analyze codebase hygiene
+          claude -p "Review index.html and repository configuration for security hygiene, hardcoded fallbacks, or cryptographic flaws. Output a clean, structured markdown report to reports/latest-audit.md" \
+            --dangerously-skip-permissions
+
+      - name: Commit & Push AI Security Report
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add reports/latest-audit.md
+          git diff --quiet && git diff --staged --quiet || (git commit -m "chore(ci): update automated Claude Code security audit report [skip ci]" && git push)
